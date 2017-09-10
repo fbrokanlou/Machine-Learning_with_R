@@ -2,7 +2,7 @@
 title: "Model Fitting - Logistic Regression"
 author: "Fakhraddin Jaf"
 date: "February 13, 2017"
-output: html_document: default
+output: html_document
 ---
 ---------
 
