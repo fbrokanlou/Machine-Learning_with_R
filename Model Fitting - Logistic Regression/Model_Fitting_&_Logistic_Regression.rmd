@@ -2,12 +2,8 @@
 title: "Actividad_2_Fakhraddin-Jaf"
 author: "Fakhraddin Jaf"
 date: "February 13, 2017"
-output:
-  html_document: default
-  pdf_document: default
+output: html_document
 ---
----------
-www.google.com
 ---------
 
 ### Step 1 : Loading Data , and running numerical and graphical summaries 
