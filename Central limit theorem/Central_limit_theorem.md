@@ -1,5 +1,5 @@
 ---
-title: "Activity 1. R & RStudio"
+title: "Central limit theorem with R & RStudio"
 author: "Fakhraddin Jaf"
 date: "January 22, 2017"
 output: html_document
