@@ -1,5 +1,0 @@
-{::nomarkdown}
-
-<!-- HTML CODE-->
-
-{:/}
