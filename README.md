@@ -12,3 +12,5 @@
 6) [Unsupervised ML - Clustering (K-Means)](https://cdn.rawgit.com/fakhraddinJ/Machine-Learning/ee49cdb8/Unsupervised%20ML%20-%20Clustering%20(K-Means)/Activity_6_CLUSTERING.html)
 
 7) [Unsupervised ML - Clustering (MIXTURES_OF_GAUSSIANS)](https://cdn.rawgit.com/fakhraddinJ/Machine-Learning/2113e3ff/Unsupervised%20ML%20-%20Clustering%20(MIXTURES_OF_GAUSSIANS)/Activity_7_MIXTURES_OF_GAUSSIANS.html)
+
+8) [Unsupervised ML – Self-Organizing Maps](https://cdn.rawgit.com/fakhraddinJ/Machine-Learning/3a2def64/Unsupervised%20ML%20%E2%80%93%20Self%20Organizing%20Maps/Activity_8_SELF-ORGANIZING-MAPS.html)
