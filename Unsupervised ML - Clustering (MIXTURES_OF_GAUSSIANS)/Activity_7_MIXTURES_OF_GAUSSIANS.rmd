@@ -1,0 +1,78 @@
+---
+title: "Activity 7 _ MIXTURES OF GAUSSIANS"
+author: "Fakhraddin Jaf"
+date: "March 28, 2017"
+output: html_document
+---
+
+***
+###Using Gaussian mixture model for clustering, including the Expectation Maximization (EM) algorithm for learning the model parameters.
+
+Gaussian Mixture Model is a common and important clustering technique, based on probability density estimation. In this exercise, we will be using it for unsupervised segmentation of a biological tissue image (1DMP13_equalize.tiff).  
+Gaussian mixture models are an extension of the k-means model, in which clusters are modeled with Gaussian distributions; so we have not only their mean but also a covariance that describes their ellipsoidal shape. Then we can fit the model by maximizing the likelihood of the observed data by EM algorithm, which assigns data to each cluster with some soft probability.  
+
+***
+#### Step1) Loading required libraries:
+```{r chunk_name, message=FALSE, warning=FALSE}
+library("tiff")
+library("mclust")
+options(error=traceback)
+```
+
+#### Step2) Loading the image and obtaining its size:
+```{r}
+original_image = readTIFF("1DMP13_equalize.TIF")
+image_size <- dim(original_image)
+```
+
+#### Step3) Obtaining a 3D sample of the format ( in red, green and blue):
+```{r}
+patterns <- original_image
+dim(patterns) <- c(image_size[1]*image_size[2],image_size[3])
+colnames(patterns) <- c("R", "G", "B")
+```
+
+
+#### Step4) Showing the original image (converted to grayscale):
+```{r}
+image(matrix(apply(patterns,1,mean),image_size[1],image_size[2]),col=gray(0:255/255))
+```
+
+#### Step5) Useing a subset of the patterns (1% of the pixels = 600 pixels) in order to choose the optimal mixture of Gaussians according to the Bayesian Information Criterion (BIC) by means of the __Mclust() __ function, and showing the results:
+```{r}
+less_pixels <- image_size[1]*image_size[2]*0.01
+less_patterns <- patterns[seq(1,image_size[1]*image_size[2],less_pixels),]
+tiffMclust <- Mclust(less_patterns, prior=priorControl())
+summary(tiffMclust)
+```
+Here by Mclust function we are performing Model-based clustering, by covariance parameterization (Normal mixture modeling via EM for different parameterized covariance structures, default is 1:9), in which the number of optimal clusters will be selected via Bayesian Information Criterion (BIC). <br>
+Meantime, the _priorControl_ function is also provided in mclust for specifying the prior and its parameters, which allows the specification of a conjugate prior on the means and variances. <br>
+As seen from the summary, number of optimal clusters is 4, and the proportion amount of each of them is ploted below: 
+```{r}
+slices <- c(as.vector(tiffMclust$parameters$pro)*100)
+lbls <- paste(c("Cluster 1", "Cluster 2", "Cluster 3", "Cluster 4"),round(slices) ,sep=" - %")
+pie(slices, labels = lbls, main="Proportion(%) of the Clusters")
+```
+
+#### Step6) Ploting the components of the Model:
+```{r}
+plot(tiffMclust)
+```
+
+
+#### Step7) Prediction for all pixels based on Gaussian finite mixture model estimated by _Mclust_:
+```{r}
+overall_prediction <- predict.Mclust(tiffMclust,patterns)
+```
+the __predict.Mclust()__ functions performs cluster prediction for multivariate observations (in this case pixel patterns of a _.tiff_ image) based on Gaussian finite mixture model, estimated above by __Mclust()__.  
+We can simply say  that, it defines to what optimal cluster each pixel belongs.
+<br>
+<br>
+
+
+#### Step8) building and showing the segmented image,( and as requested, plotting is based on the colors corresponded to the mean vector of the mixture component associated to the original pixels):
+```{r}
+segmented_image <- overall_prediction$classification
+dim(segmented_image) <- c(image_size[1],image_size[2])
+image(segmented_image,col=rgb(t(tiffMclust$parameters$mean)))
+```
