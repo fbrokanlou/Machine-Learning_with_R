@@ -1,0 +1,254 @@
+---
+title: "Actividad 4 - Computational models"
+author: "Fakhraddin Jaf"
+date: "March 14, 2017"
+output: html_document
+---
+==================================================================================================================
+#### Using repeated holdOut method (30 times) with three different classification models to predict probability of cancer relapse and comparing their accuracy
+
+##### loading required libraries:
+```{r chunk_name, message=FALSE}
+library('dplyr')
+library('nnet')
+library('e1071')
+library('rpart')
+library('plotly')
+```
+
+#### Step 1) Loading Data 
+```{r}
+Data_Orig <- read.table(file="datos_icb.txt", header=TRUE)
+```
+
+==================================================================================================================
+#### Step 2) Artificial Neural Network (ANN) Model: One hidden layer with 9 various structures (3 different values for neuron size and 3 different values for maximum iteration)
+
+```{r }
+# Initiating an empty vector to hold calculated result of 30 iteration:
+ANN_ACC_Values <- NULL
+
+# Initiating a matrix to hold Mean and Max accuracies of 9 different ANN models:
+ANN_ACC_Matrix = matrix(data=NA, nrow=9, ncol=4)
+count = 1
+
+#a "for" loop to define 3 different values of neuron Size:
+for (neuron_size in c(10, 30 , 50)){
+  
+  #a "for" loop to define 3 different values of maxit:
+  for (max_itr in c(100, 500 , 1000)){
+
+     #a "for" loop to perform "HoldOut Method" - 30 repetition:
+     for (i in 1:30){
+       
+      #Dividing data into Training and Testing sets by random selection of rows from original dataset
+      #(2/3 will be place into Training_Set and rest of them into Testing_Set)
+      Training_rows <- sample(1:500, 333 , replace=F)
+      Testing_rows <- setdiff(1:500, Training_rows)
+      Training_set <- Data_Orig[Training_rows,]
+      Testing_set <- Data_Orig[Testing_rows,]
+
+      # Building an ANN model based on training dataset (dependent variable -> "recid"):
+      ANN_Model <- nnet(recid~edad + tam + grado + gang + feno + quim + horm, data=Training_set,
+                                      size=neuron_size, maxit=max_itr, decay=5e-3, trace=FALSE)
+      
+      #Calculating predictions based on the Testing dataset:
+      ANN_Prediction <- predict(ANN_Model, Testing_set, type="class")
+
+      #Comparing prediction against original relapsed cases to find out number of matching:
+      ANN_Predicted_cases <- ifelse(ANN_Prediction == "NO" , 0 , 1)
+      Orig_Relapsed_cases <- ifelse(Data_Orig$recid[Testing_rows] == "NO", 0, 1)
+
+      #Calculating the Accuracy rate of each calculation and Storing it in Accuracy vector:
+      ANN_matched <- sum(ifelse( ANN_Predicted_cases == Orig_Relapsed_cases, 1, 0))
+      ANN_Accuracy <- (ANN_matched * 100 ) / nrow(Testing_set)
+      ANN_ACC_Values <- append( ANN_ACC_Values , ANN_Accuracy)
+
+    }
+    #Stroing Accuracy results of each of 9 different ANN structures in the matrix
+    ANN_ACC_Matrix[count,1] <- neuron_size
+    ANN_ACC_Matrix[count,2] <- max_itr
+    ANN_ACC_Matrix[count,3] <- mean(ANN_ACC_Values)
+    ANN_ACC_Matrix[count,4] <- max(ANN_ACC_Values)
+    
+    count <- count + 1
+  }
+}
+
+##### Formatting the ANN accuracy results into a dataframe and outputting a 3D plot of it:
+ANN_ACC_DF <- as.data.frame(ANN_ACC_Matrix)
+colnames(ANN_ACC_DF) <- c("Neuron_Size" , "Maximum_Itration" , "Mean_Accuracy" , "Max_Accuracy")
+ANN_ACC_DF
+
+plot_ly(ANN_ACC_DF, x = ~Neuron_Size, y = ~Maximum_Itration, z = ~Mean_Accuracy, width = 900) %>%
+        add_markers() %>%
+        layout(title = "3D plot - Accuracy result of ANN model",
+                scene = list(xaxis = list(title = 'Neuron Size'),
+                            yaxis = list(title = 'Maximum Itration'),
+                            zaxis = list(title = 'Mean Accuracy' ,
+                                         range = c((min(ANN_ACC_DF$Mean_Accuracy)-3),
+                                                   (max(ANN_ACC_DF$Mean_Accuracy)+3)))))
+
+```
+
+==================================================================================================================
+#### Step 3) Support Vector Machines (SVM) Model: 9 various structures (3 different values for Cost and 3 different values for Gamma)
+
+```{r }
+# Initiating an empty vector to hold calculated result of 30 iteration:
+SVM_ACC_Values <- NULL
+
+# Initiating a matrix to hold Mean and Max accuracies of 9 different SVM models:
+SVM_ACC_Matrix = matrix(data=NA, nrow=9, ncol=4)
+
+count = 1
+
+#a "for" loop to define 3 different values of cost:
+for (cost_value in c(10, 100 , 1000)){
+  
+  #a "for" loop to define 3 different values of gamma:
+  for (gamma_value in c(0.1, 1 , 10)){
+    
+    #a "for" loop to perform "HoldOut Method" - 30 repetition:
+    for (i in 1:30){
+      
+      #Dividing data into Training and Testing sets by random selection of rows from original dataset
+      #(2/3 will be place into Training_Set and rest of them into Testing_Set)
+      Training_rows <- sample(1:500, 333 , replace=F)
+      Testing_rows <- setdiff(1:500, Training_rows)
+      Training_set <- Data_Orig[Training_rows,]
+      Testing_set <- Data_Orig[Testing_rows,]
+
+      # Building an SVM model based on training dataset (dependent variable -> "recid"):
+      SVM_Model <- svm(recid ~ edad + tam + grado + gang + feno + quim + horm,
+                      data=Training_set , cost=cost_value , gamma=gamma_value)
+
+      
+      #Calculating predictions based on the Testing dataset:
+      SVM_Prediction <- predict(SVM_Model, Testing_set, type="class")
+
+      #Comparing prediction against original relapsed cases to find out number of matching:
+      SVM_Predicted_cases <- ifelse(SVM_Prediction == "NO" , 0 , 1)
+      Orig_Relapsed_cases <- ifelse(Data_Orig$recid[Testing_rows] == "NO", 0, 1)
+
+      #Calculating the Accuracy rate of each calculation and Storing it in Accuracy vector:
+      SVM_matched <- sum(ifelse( SVM_Predicted_cases == Orig_Relapsed_cases, 1, 0))
+      SVM_Accuracy <- (SVM_matched * 100 ) / nrow(Testing_set)
+      SVM_ACC_Values <- append( SVM_ACC_Values , SVM_Accuracy)
+
+    }
+    
+    #Stroing Accuracy results of each of 9 different SVM structures in the matrix
+    SVM_ACC_Matrix[count,1] <- cost_value
+    SVM_ACC_Matrix[count,2] <- gamma_value
+    SVM_ACC_Matrix[count,3] <- mean(SVM_ACC_Values)
+    SVM_ACC_Matrix[count,4] <- max(SVM_ACC_Values)
+    
+    count <- count + 1
+  }
+}
+
+##### Formatting the SVM accuracy results into a dataframe and outputting a 3D plot of it:
+SVM_ACC_DF <- as.data.frame(SVM_ACC_Matrix)
+colnames(SVM_ACC_DF) <- c("cost_value" , "gamma_value" , "Mean_Accuracy" , "Max_Accuracy")
+SVM_ACC_DF
+
+plot_ly(SVM_ACC_DF, x = ~cost_value, y = ~gamma_value, z = ~Mean_Accuracy, width = 900) %>%
+        add_markers() %>%
+        layout(title = "3D plot - Accuracy result of SVM model",
+               scene = list(xaxis = list(title = 'cost'),
+                            yaxis = list(title = 'gamma'),
+                            zaxis = list(title = 'Mean Accuracy' ,
+                                         range = c((min(SVM_ACC_DF$Mean_Accuracy)-3), 
+                                                   (max(SVM_ACC_DF$Mean_Accuracy)+3)))))
+
+```
+
+==================================================================================================================
+#### Step 4) Decision Trees (DT) Model: 4 structures (4 different values for complexity parameter)
+
+```{r }
+# Initiating an empty vector to hold calculated result of 30 iteration:
+DT_ACC_Values <- NULL
+
+# Initiating a matrix to hold the Mean and Max accuracies of 4 different DT models:
+DT_ACC_Matrix = matrix(data=NA, nrow=4, ncol=3)
+count = 1
+
+#a "for" loop to define 4 different values of complexity parameter(cp):
+for (cp_value in c(0.01, 0.05 , 0.10, 1.0)){
+  
+  #a "for" loop to perform "HoldOut Method" - 30 repetition:
+  for (i in 1:30){
+    
+    #Dividing data into Training and Testing sets by random selection of rows from original dataset
+    #(2/3 will be place into Training_Set and rest of them into Testing_Set)
+    Training_rows <- sample(1:500, 333 , replace=F)
+    Testing_rows <- setdiff(1:500, Training_rows)
+    Training_set <- Data_Orig[Training_rows,]
+    Testing_set <- Data_Orig[Testing_rows,]
+
+
+    # Building a DT model based on training dataset (dependent variable -> "recid"):
+    DT_Model <- rpart(recid ~ edad + tam + grado + gang + feno + quim + horm,
+  				  data=Training_set , control = rpart.control(cp = cp_value))
+
+    #Calculating predictions based on the Testing dataset:
+    DT_Prediction <- predict(DT_Model, Testing_set, type="prob")
+
+    #Comparing prediction against original relapsed cases to find out number of matching:
+    DT_Predicted_cases <- ifelse(DT_Prediction[,"NO"] > 0.5, 0, 1)
+    Orig_Relapsed_cases <- ifelse(Data_Orig$recid[Testing_rows] == "NO", 0, 1)
+
+    #Calculating the Accuracy rate of each calculation and Storing it in Accuracy vector:
+    DT_matched <- sum(ifelse( DT_Predicted_cases == Orig_Relapsed_cases, 1, 0))
+    DT_Accuracy <- (DT_matched * 100 ) / nrow(Testing_set)
+    DT_ACC_Values <- append( DT_ACC_Values , DT_Accuracy)
+
+  }
+
+#Stroing Accuracy results of each of 4 different DT structures in the matrix
+DT_ACC_Matrix[count,1] <- cp_value
+DT_ACC_Matrix[count,2] <- mean(DT_ACC_Values)
+DT_ACC_Matrix[count,3] <- max(DT_ACC_Values)
+
+count <- count + 1
+}
+
+##### Formatting the DT accuracy results into a dataframe and outputting a 2D plot of it:
+DT_ACC_DF <- as.data.frame(DT_ACC_Matrix)
+colnames(DT_ACC_DF) <- c("cp_value" , "Mean_Accuracy" , "Max_Accuracy")
+DT_ACC_DF
+
+plot_ly(DT_ACC_DF, x = ~cp_value, y = ~Mean_Accuracy, marker = list(size = 12), width = 900) %>%
+        add_markers() %>%
+        layout(title = "2D plot - Accuracy result of DT model",
+               scene = list(xaxis = list(title = 'cp value'),
+                            yaxis = list(title = 'Mean Accuracy')))
+
+```
+
+==================================================================================================================
+#### Step 5) Comparing final accuracy results of ANN, SVM and DT computational models, and making a plot of it:
+
+```{r}
+Computational_models <- c("Artificial Neural Networks" , "Support Vector Machines" ,  "Decision Trees")
+Mean_ACC <- c(mean(ANN_ACC_DF$Mean_Accuracy), mean(SVM_ACC_DF$Mean_Accuracy), mean(DT_ACC_DF$Mean_Accuracy))
+Max_ACC <- c(max(ANN_ACC_DF$Max_Accuracy), max(SVM_ACC_DF$Max_Accuracy), max(DT_ACC_DF$Max_Accuracy))
+ACC_DF <- data.frame(Computational_models, Mean_ACC, Max_ACC)
+ACC_DF
+
+plot_ly(ACC_DF, x = ~Computational_models, width = 900, alpha = 0.8 ,
+        y = ~Mean_ACC, type = 'bar', name = 'Mean Accuracy') %>%
+        add_trace(y = ~Max_ACC, name = 'Max Accuracy') %>%
+        layout(title = "Accuracy results of ANN, SVM and DT models",
+               yaxis = list(title = 'Accuracy %'),
+               barmode = 'group', margin = list(b = 100))
+```
+
+
+
+
+
+
+
