@@ -1,0 +1,143 @@
+---
+title: "Activity 8 _ SELF-ORGANIZING MAPS"
+author: "Fakhraddin Jaf"
+date: "April 9, 2017"
+output: html_document
+---
+
+***
+###Finding the optimal threshold for a foreground detection system
+
+
+***
+#### Loading required libraries:
+```{r chunk_name, message=FALSE, warning=FALSE}
+library("kohonen")
+library("tiff")
+library("plotly")
+options(error=traceback)
+```
+
+#### A) Loading the image and training a self-organizing map:
+At this step we Load the f0001000.tif image (using __readTIFF__ function of the __tiff__ package) and then by a sequenced pattern of its pixels, we train a self-organizing map with 16x16 neurons (using __som__ function of the __kohonen__ package). Finally, we plot a mosaic of 16x16 squares where each square is painted in the color of the associated neuron prototype.<br>
+The __som__ function implements the standard form of self-organizing maps:
+```{r}
+reference_image = readTIFF("f0001000.tif")
+image_size <- dim(reference_image)
+patterns <- reference_image
+dim(patterns) <- c(image_size[1]*image_size[2],image_size[3])
+colnames(patterns) <- c("R", "G", "B")
+
+# Train the SOM
+m <- som(patterns[seq(1,image_size[1]*image_size[2],10),], grid=somgrid(16,16,"hexagonal"))
+
+# Show the SOM as colors:
+color_vec <- c(unlist(m$codes))
+color_mat <- cbind(color_vec[1:256],color_vec[257:512], color_vec[513:768])
+color_palette <- rgb(color_mat)
+image(matrix(1:256,nrow=16,ncol=16),col=color_palette)
+```
+
+
+####B) Computing the quantization error:
+At this step we Load the f0001664.tif image (again using __readTIFF__ function of the __tiff__ package) and then we use the __map__ function from __kohonen__ package to map the matrix of its pixel patterns onto the trained SOM (the SOM which we trained at previous step), and then using the __distances__ component of the __map__ function, we obtain a matrix of quantization errors. Finally we plot the quantization errors:
+
+```{r}
+incoming_image = readTIFF("f0001664.tif")
+patterns_test <- incoming_image
+dim(patterns_test) <- c(image_size[1]*image_size[2],image_size[3])
+
+# Get the quantization errors for all the pixels
+quantization_errors <- kohonen::map(m,patterns_test)$distances
+dim(quantization_errors) <- c(image_size[1],image_size[2])
+image(quantization_errors)
+
+```
+
+#### C) Building ground truth mask:
+At this step we use the ground truth mask for the foreground detection system. To do so we load the f0001664gt.tif image, and then obtain a binary bidimensional matrix with __true__ values for pixel tones higher than __0.5__, and __false__ values for pixel tones lower than __0.5__.
+
+```{r}
+# we load the ground truth image:
+ground_truth_image <- readTIFF("f0001664gt.tif")
+gti_size <- dim(ground_truth_image)
+
+patterns_gti <- ground_truth_image
+dim(patterns_gti) <- c(gti_size[1]*gti_size[2],gti_size[3])
+colnames(patterns_gti) <- c("R", "G", "B")
+
+# Transforming the pixel patterns of ground truth image into a matrix, with values between 0 and 1:
+gti_matrix <- matrix(rowMeans(patterns_gti),image_size[1],image_size[2])
+
+
+# Generating the truth matrix, with 'TRUE' and 'FALSE' values:
+ground_truth_mask <- gti_matrix > 0.5
+
+# plotting the ground truth mask:
+image(ground_truth_mask)
+
+```
+
+#### D) Finding optimal threshold:
+At this step, we find a threshold of the quantization error so that the classification accuracy measured with respect to the ground truth mask is maximized. we call this optimal threshold, where at this threshold, it shows the maximum accuracy of classification.
+
+```{r}
+
+Counter <- 1
+accuracy <- NULL
+
+# Generating a sequence of thresholds 
+min_qt_err <- min(quantization_errors)
+max_qt_err <- max(quantization_errors)
+Thresholds <- seq(min_qt_err, max_qt_err, (max_qt_err - min_qt_err)/length(quantization_errors) )
+
+# Using "for loop" to get the accuracy at each threshold (by comparing with the ground truth mask), and storing it in accuracy vector:
+for(MyThresh in Thresholds)
+{
+  bw_mine <- quantization_errors > MyThresh
+  accuracy[Counter] <- sum(bw_mine == ground_truth_mask) / (image_size[1]*image_size[2])
+  Counter <- Counter +1
+}
+
+# Putting Thresholds and their equivalent accuracy value, together in a data frame:
+df <- data.frame(Thresholds, accuracy)
+
+# And, obtaining the optimal threshold:
+row_index <- which(df$accuracy == max(accuracy))[1]
+optimal_Threshold <- df[row_index,"Thresholds"]
+optimal_Threshold
+
+```
+
+<br>
+<br>
+
+#### E) Plotting the Accuracy result at each threshold in a line chart:
+Note: the chart is interactive (built using __plotly__ package)
+
+```{r}
+
+plot_title = "Accuracy plot, between \"quantization error matrix\"<br>and \"ground truth mask\", based on Threshold values"
+Optimal_Threshold_lable = paste(c("Optimal Threshold =", optimal_Threshold), collapse = " ")
+
+plot_ly(df, x = ~Thresholds, y = ~accuracy, type = 'scatter', mode = 'lines',
+        name ="Accuracy vs Threshold", width = 920 )%>%
+        layout(title = plot_title , xaxis = list(title= "Threshold"), legend = list(orientation = 'h'), 
+               yaxis = list(title= "Accuracy" , range = c(0, 1)), margin=(t=100))%>%
+        add_trace(x = ~optimal_Threshold, y =~max(accuracy), 
+                  name = Optimal_Threshold_lable, mode = 'markers', marker = list(size = 10))
+
+
+```
+
+<br>
+<br>
+
+#### F) And finally, we draw the acuracy image, based on optimal threshold value:
+
+```{r}
+accuracy_image <- quantization_errors > optimal_Threshold
+image(accuracy_image)
+```
+
+
