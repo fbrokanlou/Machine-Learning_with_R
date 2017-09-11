@@ -1,0 +1,65 @@
+---
+title: "ROC curve and Feature Selection"
+author: "Fakhraddin Jaf"
+date: "March 18, 2017"
+output: html_document
+---
+------------------
+
+### Selection of features (in this case: finding the most important variables) to be used in a logistic regression model for breast cancer relapse prediction and estimating its accuracy
+
+##### loading required libraries:
+```{r chunk_name, message=FALSE, warning=FALSE}
+library(caret)
+library(pROC)
+```
+***
+#### Step 1) Loading Data 
+```{r}
+Data_Orig <- read.table(file="datos_icb.txt", header=TRUE)
+```
+***
+#### Step 2) A model is trained using a 10-fold cross validation
+```{r message=FALSE, results="hide"}
+model <-  train(recid ~ ., data=Data_Orig, 
+                method= "lvq", 
+                trControl = trainControl(
+                            method = "cv", number = 10 , 
+                            verboseIter = TRUE))
+```
+***
+#### Step 3) Finding most important variables based on the trained model ( ... printing the result + plot):
+```{r}
+var_importance <- varImp(model)
+print(var_importance)
+ggplot(var_importance) + ggtitle("                                
+                                 Variance Importance %")
+```
+
+***
+#### Step 4) Building a logistic regression model using most important variables, then by using __predict()__ function, probability of relapse will be predicted
+```{r}
+glm_model <-  glm(recid ~ tam + grado + gang, data = Data_Orig, family = binomial("logit"))
+prediction <- predict(glm_model,Data_Orig[,c("tam", "grado", "gang")], type = "r")
+```
+***
+#### Step 5) calculating ROC and AUC
+```{r}
+roc1 <- roc(Data_Orig$recid, prediction, auc = TRUE)
+roc1
+plot(roc1, col = "blue", main="ROC Curve Plot")
+auc1 = round(auc(roc1), 3)
+legend(.3, .3, auc1, title = "AUC")
+```
+
+***
+#### Step 6) calculating ACC
+```{r}
+Pred_code_01 <- ifelse(prediction >= 0.5, 1 , 0)
+Orig_code_01 <- ifelse(Data_Orig$recid == "SI", 1, 0)
+correctly_predicted <- sum(ifelse(Pred_code_01 == Orig_code_01, 1, 0))
+ACC <- (correctly_predicted * 100)/nrow(Data_Orig)
+ACC
+```
+
+
