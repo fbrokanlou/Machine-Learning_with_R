@@ -1,0 +1,101 @@
+---
+title: "Actividad 3 , Internal Validation"
+author: "Fakhraddin Jaf"
+date: "March 1, 2017"
+output: html_document
+---
+
+### Using Repeated HoldOut method for multiple resampling to get more accurate prediction
+
+##### loading required libraries:
+```{r chunk_name, message=FALSE}
+library(dplyr)
+library(plotly)
+```
+
+#### Step 1) Loading Data 
+```{r}
+Data_Orig <- read.table(file="datos_icb.txt", header=TRUE)
+
+#initiating an empty variable to hold calculated result of each iteration:
+Prediction_Calc <-NULL
+
+#initiating a data frame to hold age information of each training sample:
+Age_Table <- setNames(as.data.frame(c(1:as.integer((nrow(Data_Orig))*2/3))),"id")
+
+```
+
+#### Step 2) a "for" loop to perform "Repeated HoldOut": 
+
+```{r}
+iteration_num = 30
+for (i in 1:iteration_num){
+
+#Step 2.1) Dividing data into Training and Testing sets by random selection of rows from original dataset (2/3 will be place into Training_Set and rest of them into Testing_Set)
+Training_set <- Data_Orig[sample(1:nrow(Data_Orig), as.integer(nrow(Data_Orig)*(2/3)) , replace=F),]
+Testing_set <- Data_Orig[setdiff(1:nrow(Data_Orig),c(as.integer(rownames(Training_set)))),]
+
+
+#Step 2.2) Building a logistic regression model based on the training set (dependent variable -> "recid"):
+Log_Reg_Model <- glm(recid ~ edad + tam + grado + gang + feno + quim + horm, data=Training_set, family = binomial("logit"))
+
+#Step 2.3) Calculating predictions based on the test set:
+Prediction <- predict(Log_Reg_Model, Testing_set, type="response")
+
+#Step 2.4) Comparing prediction against original relapsed cases to find out number of matching:
+Predicted_cases <- as.vector(ifelse(Prediction >= 0.5 , "SI" , "NO"))
+Matched_cases <- sum(ifelse(Predicted_cases == as.vector(Testing_set$recid), 1, 0))
+
+#Step 2.5) Storing the Accuracy rate of each calculation:
+Prediction_Calc <- append(Prediction_Calc, (Matched_cases * 100)/ nrow(Testing_set))
+
+#Step 2.6) Storing the Training Age data of each calculation:
+Age_Table <-cbind(Age_Table, Training_set[,1])
+}
+```
+
+#### Step 3) Printing Accuracy results:
+```{r}
+Result_Data <- data.frame(Min= min(Prediction_Calc),Mean = mean(Prediction_Calc), Max = max(Prediction_Calc))
+row.names(Result_Data) <- "Accuracy Value: "
+setNames(Prediction_Calc, c(sprintf("Prediction%02d", 1:iteration_num)))
+Result_Data
+
+```
+
+#### Step 4) Plotting Accuracy results:
+```{r}
+Accuracy_Data <- data.frame(Iteration = c(1:iteration_num), Accuracy = Prediction_Calc)
+
+plot_ly(Accuracy_Data, x = ~Iteration, y = ~Accuracy, name = 'Accuracy per Sample', type = 'scatter',
+        mode = 'lines+markers', width = 920, alpha = 0.8) %>%
+        add_lines(y = ~(mean(Prediction_Calc)), 
+                  name = paste(c(sprintf("Mean Accuracy = %f", mean(Prediction_Calc)))), 
+                  hoverinfo="none") %>%
+        layout(yaxis = list(title = 'Accuracy Rate %'), 
+               xaxis = list(title = "calculations", tickangle = -45), 
+               margin = list(b = 100), legend = list(x = 0.05, y = 1.2))
+
+
+```
+
+#### Step 5) Below plot shows that our samples are almost based on normal distribution:
+
+```{r}
+x = unlist(Age_Table[,-1])
+fit = density(x)
+
+plot_ly(x = ~x, type = "histogram", name = "Age Frequency", width = 900 ,
+    hoverinfo="none") %>% 
+  
+  add_lines(x = fit$x, y = fit$y, mode = "lines", fill = "tozeroy", 
+            fillcolor = 'rgba(255, 212, 96, 0.5)', yaxis = "y2", name = "Density") %>% 
+  
+  layout(
+    yaxis = list(title = "Frequency"),
+    yaxis2 = list(overlaying = "y", showgrid = FALSE,showticklabels = FALSE), 
+    xaxis = list(title = "Age"),  
+    margin = list(b = 100), 
+    legend = list(x = 0.05, y = 1.2)
+    )
+```
