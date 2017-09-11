@@ -1,0 +1,129 @@
+---
+title: "Activity 6: CLUSTERING"
+author: "Fakhraddin Jaf"
+date: "March 19, 2017"
+output: html_document
+---
+
+***
+##Unsupervised clustering of the "Diabetes" data set, using K-Means
+
+####Loading required libraries:
+```{r chunk_name, message=FALSE, warning=FALSE}
+library("clValid")
+library('fpc')
+library('plotly')
+options(error=traceback)
+```
+
+***
+####Read the dataset
+```{r}
+diabetes.orig <- read.csv(file="diabetes.csv", header=TRUE,sep=";",dec=".",na.strings="")
+
+# Selecting some attributes, and removing the samples with NAs
+diabetes.df <- na.omit(diabetes.orig[,c("chol","stab.glu","hdl","ratio","glyhb")])
+```
+
+***
+###A) PROCESSING WITH __`clValid`__ PACKAGE
+####1) Reporting validation measures for clustering results by `clValid` function:
+
+The R package __clValid__ contains functions for validating the results of a clustering
+analysis. The type of cluster validation measures we use here is "internal", and the clustering algorithms will be "K-means".  
+__Internal validation__ measures take only the dataset and the clustering partition as input and uses inner information in the data to assess the quality of the clustering. The internal validation measures are the __connectivity__, __silhouette width__, and __Dunn index__.    
+__K-means__ is an iterative method which minimizes the within-class sum of squares for a given number of clusters. The algorithm starts with an initial guess for the cluster centers, and each observation is placed in the cluster to which it is closest.
+The cluster centers are then updated, and the entire process is repeated until the cluster centers no longer move.
+```{r}
+# Study the validity of the obtained clusters for clusterings from 2 to 10 clusters
+internal_val <- clValid(diabetes.df, 2:10, clMethods=c("kmeans"), validation="internal")
+
+# The optimal scores are obtained from 'clValid' result:
+optimal_results <- optimalScores(internal_val)
+summary(internal_val)
+```
+
+As seen from above, the omptimal number of clusters for each of these three validation measures, is 2.
+
+__Ploting the clustering validity measure values:__
+```{r}
+plot(internal_val)
+```
+
+***
+####2) The clustering for the optimal number of clusters (based on "Silhouette width"), plotted with the __`pairs`__ function.
+The __silhouette width__ is the average of silhouette values of each observation. The silhouette value measures the degree of confidence in the clustering assignment of a particular observation, with well-clustered observations having values near 1 and poorly clustered observations having values near -1. In our case, the best value is __0.6078__ , when the number of clusters is __2__.  
+```{r}
+# using "kmeans" function to run the "K-Means" algorithm, (number of clusters: 2) on data set:
+NumClusters1 <- as.integer(as.matrix(optimal_results['Silhouette','Clusters']))
+kc <- kmeans(diabetes.df, NumClusters1)
+my_colors1 <- rainbow(NumClusters1)
+
+# Plot the clustering results according to the all attributes
+pairs(rbind(diabetes.df,kc$centers),col=c(my_colors1[kc$cluster],my_colors1),
+                       pch=c(rep(1,nrow(diabetes.df)),rep(15,NumClusters1)))
+
+#Ploting the optimal clustering on discriminant coordinates:
+plotcluster(diabetes.df,kc$cluster)
+```
+
+***
+###B) PROCESSING WITH __`fpc`__ PACKAGE
+
+The R package __fpc__ contains various methods for clustering and cluster validation including estimating the number of clusters with __kmeans__ algorithm. For this porpuse we will use the function  __kmeansruns()__, which is based on k-means clustering, but initializes the k-means algorithm several times with random points from the data set as means.  
+Meantime, we will run __kmeansruns()__ two times, each with different value for criterion Argument, "asw" or "ch", which determines whether __average silhouette width__ or __CalinskiHarabasz__ will be applied for validation.
+
+
+####1) Applying __"average silhouette width"__ criteria to optimize the number of clusters automatically, then plotting with the __`pairs`__ function:
+```{r}
+# using "kmeansruns" function to run the "K-Means" algorithm to find out the optimal number of clusters, determined by the "average silhouette width(asw)":
+zc_asw <- kmeansruns(diabetes.df ,  criterion = "asw")
+NumClusters2 <- zc_asw$bestk
+my_colors2 <- rainbow(NumClusters2)
+
+# Plot the clustering results according to the all attributes
+pairs(rbind(diabetes.df,zc_asw$centers),col=c(my_colors2[zc_asw$cluster],my_colors2),
+                               pch=c(rep(1,nrow(diabetes.df)),rep(15,NumClusters2)))
+
+#Ploting the optimal clustering on discriminant coordinates (obtained by applying "average silhouette width" criteria:
+plotcluster(diabetes.df,zc_asw$cluster)
+```
+
+***
+####2) Applying __"Calinski-Harabasz"__ criteria to optimize the number of clusters automatically, then plotting with the __`pairs`__ function:
+
+Calinski-Harabasz index (also known as the variance ratio criterion) is an another internal clustering criterion used to evaluate the optimal number of clusters.  
+```{r}
+# using "kmeansruns" function to run the "K-Means" algorithm to find out the optimal number of clusters, determined by the "Calinski-Harabasz (ch)" criteria:
+zc_ch <- kmeansruns(diabetes.df ,  criterion = "ch")
+NumClusters3 <- zc_ch$bestk
+my_colors3 <- rainbow(NumClusters3)
+
+# Plot the clustering results according to the all attributes
+pairs(rbind(diabetes.df,zc_ch$centers),col=c(my_colors3[zc_ch$cluster],my_colors3),
+                             pch=c(rep(1,nrow(diabetes.df)),rep(15,NumClusters3)))
+
+#Ploting the optimal clustering on discriminant coordinates (obtained by applying "Calinski-Harabasz" criteria:
+plotcluster(diabetes.df,zc_ch$cluster)
+```
+
+***
+###C) Comparing Results:
+#### The optimal number of clusters are compared in below plot:
+```{r}
+Method_name <- c("clValid_Connectivity", "clValid_Dunn", "clValid_Silhouette", "fpc_average_silhouette_width", "fpc_Calinski_Harabasz")
+
+values <- as.integer(c(as.matrix(optimal_results)[1,3], as.matrix(optimal_results)[2,3], as.matrix(optimal_results)[3,3], zc_asw$bestk, zc_ch$bestk))
+
+optimal_clusters <- data.frame("Method_name" = Method_name, "values" = values)
+plot_ly(optimal_clusters, x = ~Method_name, y = ~values, type = 'bar', alpha = 0.8) %>%
+        layout(title = "Number of optimal clusters", 
+               yaxis = list(title = '# of optimal clusters', range = c(0, 5)), 
+               xaxis= list(title = "", tickangle = 20) , margin = (b = 500) )
+```
+
+
+__As seen from the plot, in all clustering evaluation structures, the number of optimal clusters for "Diabetes" data set is 2, unless in the case of using "Calinski-Harabasz index" by `fpc` package, which is 3.__
+
+***
+
