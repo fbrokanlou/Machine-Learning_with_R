@@ -6,9 +6,10 @@
 3) [Supervised ML - Internal validation, Using Repeated HoldOut method](https://cdn.rawgit.com/fakhraddinJ/Machine-Learning/50e73f61/Supervised%20ML_Internal%20validation/Actividad_3-Internal_Validation.html)
 
 4) [Supervised ML - Three computational models](https://cdn.rawgit.com/fakhraddinJ/Machine-Learning/387de517/Supervised%20ML%20-%20Computational%20models%20(ANN%2C%20SVM%2C%20DT)/Actividad_4-Computational_models.html)
-      A) Artificial Neural Networks (ANN)
-      B) Support Vector Machines(SVM)
-      C) Decision Trees (DT)
+
+            A) Artificial Neural Networks (ANN)
+            B) Support Vector Machines(SVM)
+            C) Decision Trees (DT)
 
 5) [Supervised ML - ROC curve and Feature Selection](https://cdn.rawgit.com/fakhraddinJ/Machine-Learning/7de5a94f/Supervised_ML-ROC_curve_and_Feature_Selection/Actividad_5_ROC_curve_and_Feature_Selection.html)
 
