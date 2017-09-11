@@ -5,7 +5,7 @@
 
 3) [Supervised ML - Internal validation, Using Repeated HoldOut method](https://cdn.rawgit.com/fakhraddinJ/Machine-Learning/50e73f61/Supervised%20ML_Internal%20validation/Actividad_3-Internal_Validation.html)
 
-4) [Supervised ML - Three computational models](https://cdn.rawgit.com/fakhraddinJ/Machine-Learning/387de517/Supervised%20ML%20-%20Computational%20models%20(ANN%2C%20SVM%2C%20DT)/Actividad_4-Computational_models.html)
+4) [Supervised ML - Three computational models:](https://cdn.rawgit.com/fakhraddinJ/Machine-Learning/387de517/Supervised%20ML%20-%20Computational%20models%20(ANN%2C%20SVM%2C%20DT)/Actividad_4-Computational_models.html)
 
             A) Artificial Neural Networks (ANN)
             B) Support Vector Machines(SVM)
